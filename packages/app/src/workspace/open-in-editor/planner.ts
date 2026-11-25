@@ -41,6 +41,8 @@ export interface PlanWorkspaceOpenTargetsInput {
   desktopTargets: readonly DesktopOpenTarget[];
   canUseDesktopBridge: boolean;
   isLocalExecution: boolean;
+  /** Set for remote hosts reached over SSH: desktop targets then open through Remote-SSH. */
+  remoteSshHost?: string | null;
   checkoutStatus?: CheckoutStatusForOpenTarget | null;
   forge?: Forge | null;
 }
@@ -70,10 +72,13 @@ function planDesktopOpenTargets(input: {
   desktopTargets: readonly DesktopOpenTarget[];
   canUseDesktopBridge: boolean;
   isLocalExecution: boolean;
+  remoteSshHost?: string | null;
 }): PlannedDesktopOpenTarget[] {
-  if (!input.canUseDesktopBridge || !input.isLocalExecution) {
+  const remoteSshHost = input.isLocalExecution ? null : (input.remoteSshHost ?? null);
+  if (!input.canUseDesktopBridge || (!input.isLocalExecution && !remoteSshHost)) {
     return [];
   }
+  const remote = remoteSshHost ? { remoteSshHost } : {};
 
   const resolvedDirectory =
     input.directoryPath === undefined || input.directoryPath === null
@@ -97,7 +102,7 @@ function planDesktopOpenTargets(input: {
         label: target.label,
         editorId: target.id,
         icon: target.icon,
-        openInput: { editorId: target.id, workspacePath },
+        openInput: { editorId: target.id, workspacePath, ...remote },
       };
     }
     return {
@@ -111,6 +116,7 @@ function planDesktopOpenTargets(input: {
         workspacePath,
         filePath: input.resolvedFile.absolutePath,
         ...(input.activeFile?.lineStart ? { line: input.activeFile.lineStart } : {}),
+        ...remote,
       },
     };
   });

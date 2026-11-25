@@ -3,7 +3,11 @@ import { useTranslation } from "react-i18next";
 import { useToast } from "@/contexts/toast-context";
 import { useIsLocalDaemon } from "@/hooks/use-is-local-daemon";
 import { resolvePreferredEditorId, usePreferredEditor } from "@/hooks/use-preferred-editor";
-import { openDesktopTarget, useDesktopOpenTargets } from "@/workspace/desktop-open-targets";
+import {
+  openDesktopTarget,
+  useDesktopOpenTargets,
+  useRemoteSshHost,
+} from "@/workspace/desktop-open-targets";
 import { planWorkspaceOpenTargets } from "@/workspace/open-in-editor/planner";
 
 interface UseOpenDirectoryInEditorInput {
@@ -25,8 +29,9 @@ export function useOpenDirectoryInEditor({
   const { t } = useTranslation();
   const toast = useToast();
   const isLocalExecution = useIsLocalDaemon(serverId);
+  const remoteSshHost = useRemoteSshHost(serverId, isLocalExecution);
   const { preferredEditorId } = usePreferredEditor({ serverId, projectId });
-  const { targets, isAvailable } = useDesktopOpenTargets({ isLocalExecution });
+  const { targets, isAvailable } = useDesktopOpenTargets({ isLocalExecution, remoteSshHost });
   const editorTargets = useMemo(
     () => targets.filter((target) => target.kind === "editor"),
     [targets],
@@ -50,6 +55,7 @@ export function useOpenDirectoryInEditor({
         desktopTargets: [preferredTarget],
         canUseDesktopBridge: isAvailable,
         isLocalExecution,
+        remoteSshHost,
       }).find((candidate) => candidate.source === "desktop");
       if (!target) {
         return;
@@ -60,7 +66,7 @@ export function useOpenDirectoryInEditor({
         );
       });
     },
-    [isAvailable, isLocalExecution, preferredTarget, t, toast, workspaceDirectory],
+    [isAvailable, isLocalExecution, preferredTarget, remoteSshHost, t, toast, workspaceDirectory],
   );
 
   return useMemo(

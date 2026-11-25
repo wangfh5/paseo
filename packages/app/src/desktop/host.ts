@@ -77,11 +77,26 @@ export interface DesktopEditorOpenTargetInput {
   filePath?: string;
   line?: number;
   column?: number;
+  /** Open on this SSH host (alias or user@host) through the editor's Remote-SSH scheme. */
+  remoteSshHost?: string;
 }
 
 export interface DesktopEditorBridge {
-  listTargets?: (input?: { workspacePath?: string }) => Promise<DesktopEditorTargetDescriptor[]>;
+  listTargets?: (input?: {
+    workspacePath?: string;
+    remote?: boolean;
+  }) => Promise<DesktopEditorTargetDescriptor[]>;
   openTarget?: (input: DesktopEditorOpenTargetInput) => Promise<void>;
+}
+
+export interface DesktopSshConfigHost {
+  alias: string;
+  hostName?: string;
+  user?: string;
+}
+
+export interface DesktopSshBridge {
+  listConfigHosts?: () => Promise<DesktopSshConfigHost[]>;
 }
 
 export interface DesktopWebUtilsBridge {
@@ -238,6 +253,7 @@ export interface DesktopHostBridge {
   notification?: DesktopNotificationBridge;
   opener?: DesktopOpenerBridge;
   editor?: DesktopEditorBridge;
+  ssh?: DesktopSshBridge;
   webUtils?: DesktopWebUtilsBridge;
   menu?: DesktopMenuBridge;
   browser?: DesktopBrowserBridge;

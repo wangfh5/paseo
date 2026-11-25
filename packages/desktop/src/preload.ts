@@ -104,8 +104,11 @@ contextBridge.exposeInMainWorld("paseoDesktop", {
   opener: {
     openUrl: (url: string) => ipcRenderer.invoke("paseo:opener:openUrl", url),
   },
+  ssh: {
+    listConfigHosts: () => ipcRenderer.invoke("paseo:ssh:listConfigHosts"),
+  },
   editor: {
-    listTargets: (input?: { workspacePath?: string }) =>
+    listTargets: (input?: { workspacePath?: string; remote?: boolean }) =>
       ipcRenderer.invoke("paseo:editor:listTargets", input),
     openTarget: (input: {
       editorId: string;
@@ -113,6 +116,7 @@ contextBridge.exposeInMainWorld("paseoDesktop", {
       filePath?: string;
       line?: number;
       column?: number;
+      remoteSshHost?: string;
     }) => ipcRenderer.invoke("paseo:editor:openTarget", input),
   },
   webUtils: {
