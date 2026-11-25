@@ -1158,3 +1158,33 @@ describe("external Markdown", () => {
     );
   });
 });
+
+describe("latex math", () => {
+  function collectTypes(node: ASTNode): string[] {
+    const types: string[] = [node.type];
+    node.children?.forEach((child) => types.push(...collectTypes(child)));
+    return types;
+  }
+
+  it("parses $...$ as inline math and $$...$$ as display math", async () => {
+    const tree = await parseMarkdown("energy $E=mc^2$ here\n\n$$R=1$$\n", { latexMath: true });
+    expect(collectTypes(tree)).toEqual(
+      expect.arrayContaining(["LatexMathInline", "LatexMathDisplay"]),
+    );
+  });
+
+  it("parses normalized \\[...\\] as display math", async () => {
+    const tree = await parseMarkdown(
+      prepareMarkdownSource("Crossing 通过\n\\[\nR=1\n\\]\n定义一个交点。").render(),
+      { latexMath: true },
+    );
+    expect(collectTypes(tree)).toEqual(expect.arrayContaining(["LatexMathDisplay"]));
+  });
+
+  it("parses normalized \\(...\\) as inline math", async () => {
+    const tree = await parseMarkdown(prepareMarkdownSource("energy \\(E=mc^2\\) here").render(), {
+      latexMath: true,
+    });
+    expect(collectTypes(tree)).toEqual(expect.arrayContaining(["LatexMathInline"]));
+  });
+});

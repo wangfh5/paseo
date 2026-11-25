@@ -2,6 +2,7 @@ import { pluginOverviewUrl } from "@getpaseo/protocol/plugin-overview";
 import { classifyAssistantFileLink } from "@/assistant-file-links";
 import { ASSISTANT_FILE_EXTENSIONS } from "@/assistant-file-links/extensions";
 import { normalizeMarkdownHtml } from "./html";
+import { normalizeLatexDelimiters } from "./latex-delimiters";
 import { gfmTable } from "micromark-extension-gfm-table";
 import { gfmTableFromMarkdown } from "mdast-util-gfm-table";
 import type { AssistantFileLinkSource } from "@/assistant-file-links";
@@ -167,7 +168,7 @@ export function prepareMarkdownSource(
     external?: boolean;
   } = {},
 ) {
-  source = normalizeMarkdownHtml(source);
+  source = normalizeLatexDelimiters(normalizeMarkdownHtml(source));
   const images: MarkdownImage[] = [];
   let tree: Root | undefined;
   const getTree = () =>
