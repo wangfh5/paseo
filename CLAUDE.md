@@ -1,3 +1,11 @@
+## Personal fork (`wangfh5/paseo`) — read first
+
+This checkout is a personal fork. Workflow, branch rules and deployment live in `~/Sync/infra/paseo-custom/README.md`:
+
+- Never commit to `main` (mirrors `upstream/main`) or `custom` (rebuilt by `sync-upstream.sh`).
+- Each feature lives on its own `feat/<name>` branch created from `stable` (latest official release tag) and is listed in `~/Sync/infra/paseo-custom/features.txt`.
+- Build and install into Paseo Desktop on the MacBook Air with `~/Sync/infra/paseo-custom/deploy.sh`.
+
 # CLAUDE.md
 
 Paseo is a mobile app for monitoring and controlling your local AI coding agents from anywhere. Your dev environment, in your pocket. Connects directly to your actual development environment — your code stays on your machine.
