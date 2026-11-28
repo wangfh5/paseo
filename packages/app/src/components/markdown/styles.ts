@@ -103,6 +103,14 @@ export function createMarkdownStyles(
       inlineImage: { size: paragraph.lineHeight },
       image: { ...block, height: 320, resizeMode: "contain", borderRadius: 8 },
       thematicBreak: { ...block, color: theme.colors.border, height: 1 },
+      math: {
+        ...block,
+        fontSize,
+        color: theme.colors.foreground,
+        backgroundColor: "transparent",
+        padding: 0,
+      },
+      inlineMath: { color: theme.colors.foreground },
     },
   };
 }
