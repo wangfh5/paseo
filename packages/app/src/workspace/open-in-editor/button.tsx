@@ -21,7 +21,11 @@ import { resolvePreferredEditorId, usePreferredEditor } from "@/hooks/use-prefer
 import { openExternalUrl } from "@/utils/open-external-url";
 import { isAbsolutePath } from "@/utils/path";
 import { isWeb } from "@/constants/platform";
-import { openDesktopTarget, useDesktopOpenTargets } from "@/workspace/desktop-open-targets";
+import {
+  openDesktopTarget,
+  useDesktopOpenTargets,
+  useRemoteSshHost,
+} from "@/workspace/desktop-open-targets";
 import { resolveWorkspaceFilePaths, type WorkspaceFileLocation } from "@/workspace/file-open";
 import { planWorkspaceOpenTargets } from "@/workspace/open-in-editor/planner";
 import type { Theme } from "@/styles/theme";
@@ -92,10 +96,12 @@ export function WorkspaceOpenInEditorButton({
   const toast = useToast();
   const isConnected = useHostRuntimeIsConnected(serverId);
   const isLocalDaemon = useIsLocalDaemon(serverId);
+  const remoteSshHost = useRemoteSshHost(serverId, isLocalDaemon);
   const { preferredEditorId, updatePreferredEditor } = usePreferredEditor({ serverId, projectId });
   const { targets: desktopOpenTargets, isAvailable: isDesktopOpenAvailable } =
     useDesktopOpenTargets({
       isLocalExecution: isLocalDaemon,
+      remoteSshHost,
       workspacePath: cwd,
     });
 
@@ -130,6 +136,7 @@ export function WorkspaceOpenInEditorButton({
         desktopTargets: desktopOpenTargets,
         canUseDesktopBridge: isDesktopOpenAvailable,
         isLocalExecution: isLocalDaemon,
+        remoteSshHost,
         checkoutStatus,
         forge: resolvedForge,
       }).map((target) => {
@@ -159,6 +166,7 @@ export function WorkspaceOpenInEditorButton({
       resolvedForge,
       isDesktopOpenAvailable,
       isLocalDaemon,
+      remoteSshHost,
       resolvedFile,
     ],
   );

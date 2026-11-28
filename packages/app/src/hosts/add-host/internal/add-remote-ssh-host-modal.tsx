@@ -23,8 +23,61 @@ import {
 import type { EditingTextInputHandle } from "@/components/ui/text-input";
 import { DaemonConnectionTestError } from "@/utils/test-daemon-connection";
 import { AdaptiveModalSheet, type SheetHeader } from "@/components/adaptive-modal-sheet";
+import { useFetchQuery } from "@/data/query";
+import { getDesktopHost, type DesktopSshConfigHost } from "@/desktop/host";
 
 const FLEX_ONE_STYLE = { flex: 1 } as const;
+const MAX_SSH_SUGGESTIONS = 6;
+
+/** Accepts a bare ~/.ssh/config alias or user@host as well as an ssh:// URI. */
+function toSshUri(value: string): string {
+  return value.includes("://") ? value : `ssh://${value}`;
+}
+
+function filterSshConfigHosts(
+  hosts: readonly DesktopSshConfigHost[],
+  input: string,
+): DesktopSshConfigHost[] {
+  const query = input
+    .trim()
+    .replace(/^ssh:\/\//u, "")
+    .toLowerCase();
+  if (hosts.some((host) => host.alias.toLowerCase() === query)) return [];
+  return hosts
+    .filter((host) =>
+      [host.alias, host.hostName, host.user].some((field) => field?.toLowerCase().includes(query)),
+    )
+    .slice(0, MAX_SSH_SUGGESTIONS);
+}
+
+interface SshSuggestionRowProps {
+  host: DesktopSshConfigHost;
+  disabled: boolean;
+  onSelect: (alias: string) => void;
+}
+
+function SshSuggestionRow({ host, disabled, onSelect }: SshSuggestionRowProps) {
+  const handlePress = useCallback(() => onSelect(host.alias), [host.alias, onSelect]);
+  const detail = [host.user, host.hostName].filter(Boolean).join("@");
+  return (
+    <PressHighlight
+      style={styles.suggestion}
+      onPress={handlePress}
+      disabled={disabled}
+      accessibilityRole="button"
+      testID={`remote-ssh-suggestion-${host.alias}`}
+    >
+      <Text style={styles.suggestionAlias} numberOfLines={1}>
+        {host.alias}
+      </Text>
+      {detail ? (
+        <Text style={styles.suggestionDetail} numberOfLines={1}>
+          {detail}
+        </Text>
+      ) : null}
+    </PressHighlight>
+  );
+}
 const ThemedTerminal = withUnistyles(Terminal);
 const ThemedEye = withUnistyles(Eye, (theme) => ({ color: theme.colors.foregroundMuted }));
 const ThemedEyeOff = withUnistyles(EyeOff, (theme) => ({ color: theme.colors.foregroundMuted }));
@@ -69,6 +122,29 @@ const styles = StyleSheet.create((theme) => {
     controlDisabled: {
       ...geometry.controlDisabled,
     },
+    suggestions: {
+      alignSelf: "stretch",
+      gap: theme.spacing[1],
+    },
+    suggestion: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing[2],
+      paddingHorizontal: theme.spacing[3],
+      paddingVertical: theme.spacing[2],
+      borderRadius: theme.borderRadius.lg,
+      backgroundColor: theme.colors.surface2,
+    },
+    suggestionAlias: {
+      color: theme.colors.foreground,
+      fontSize: theme.fontSize.sm,
+      fontWeight: "600",
+    },
+    suggestionDetail: {
+      flex: 1,
+      color: theme.colors.foregroundMuted,
+      fontSize: theme.fontSize.sm,
+    },
     actions: {
       flexDirection: "row",
       gap: theme.spacing[3],
@@ -105,10 +181,25 @@ export function AddRemoteSshHostModal({
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [targetText, setTargetText] = useState("");
+  const listSshConfigHosts = getDesktopHost()?.ssh?.listConfigHosts;
+  const { data: sshConfigHosts } = useFetchQuery({
+    queryKey: ["desktop-ssh-config-hosts"],
+    dataShape: "list",
+    enabled: visible && Boolean(listSshConfigHosts),
+    staleTimeMs: 30_000,
+    retry: false,
+    queryFn: () => listSshConfigHosts?.() ?? Promise.resolve([]),
+  });
+  const suggestions = useMemo(
+    () => filterSshConfigHosts(sshConfigHosts ?? [], targetText),
+    [sshConfigHosts, targetText],
+  );
   const header = useMemo<SheetHeader>(() => ({ title: t("pairing.remoteSsh.title") }), [t]);
 
   const clear = useCallback(() => {
     targetRef.current = "";
+    setTargetText("");
     passwordRef.current = "";
     inputRef.current?.replaceText("");
     passwordInputRef.current?.replaceText("");
@@ -138,7 +229,7 @@ export function AddRemoteSshHostModal({
 
     let target: ReturnType<typeof parseSshTransportUri>;
     try {
-      target = parseSshTransportUri(rawTarget);
+      target = parseSshTransportUri(toSshUri(rawTarget));
     } catch {
       setErrorMessage(t("pairing.remoteSsh.errors.invalidTarget"));
       return;
@@ -172,6 +263,14 @@ export function AddRemoteSshHostModal({
   }, [clear, hosts, isSaving, onClose, onSaved, probeAndUpsertRemoteSshConnection, t]);
   const handleTargetChange = useCallback((value: string) => {
     targetRef.current = value;
+    setTargetText(value);
+  }, []);
+  const handleSelectSuggestion = useCallback((alias: string) => {
+    const value = `ssh://${alias}`;
+    targetRef.current = value;
+    setTargetText(value);
+    inputRef.current?.replaceText(value);
+    setErrorMessage("");
   }, []);
   const handlePasswordChange = useCallback((value: string) => {
     passwordRef.current = value;
@@ -222,13 +321,27 @@ export function AddRemoteSshHostModal({
           accessibilityLabel={t("pairing.remoteSsh.fields.target")}
           initialValue=""
           onChangeText={handleTargetChange}
-          placeholder="ssh://user@host"
+          placeholder={
+            sshConfigHosts?.length ? "ssh://user@host or ~/.ssh/config alias" : "ssh://user@host"
+          }
           autoCapitalize="none"
           autoCorrect={false}
           editable={!isSaving}
           returnKeyType="done"
           onSubmitEditing={handleSubmit}
         />
+        {suggestions.length > 0 ? (
+          <View style={styles.suggestions} testID="remote-ssh-suggestions">
+            {suggestions.map((host) => (
+              <SshSuggestionRow
+                key={host.alias}
+                host={host}
+                disabled={isSaving}
+                onSelect={handleSelectSuggestion}
+              />
+            ))}
+          </View>
+        ) : null}
       </Field>
       <Field label={t("pairing.remoteSsh.fields.password")} testID="remote-ssh-password">
         <View style={styles.passwordRow}>

@@ -44,6 +44,39 @@ describe("planWorkspaceOpenTargets", () => {
     });
   });
 
+  it("opens remote SSH workspaces through the host's SSH destination", () => {
+    const targets = planWorkspaceOpenTargets({
+      workspaceDirectory: "/home/me/repo",
+      activeFile: { path: "src/app.ts", lineStart: 3 },
+      desktopTargets: [desktopTargets[0]!],
+      canUseDesktopBridge: true,
+      isLocalExecution: false,
+      remoteSshHost: "ubuntu-ts",
+    });
+
+    expect(targets[0]).toMatchObject({
+      openInput: {
+        editorId: "vscode",
+        workspacePath: "/home/me/repo",
+        filePath: "/home/me/repo/src/app.ts",
+        line: 3,
+        remoteSshHost: "ubuntu-ts",
+      },
+    });
+  });
+
+  it("offers no desktop targets for remote hosts without an SSH destination", () => {
+    const targets = planWorkspaceOpenTargets({
+      workspaceDirectory: "/home/me/repo",
+      desktopTargets,
+      canUseDesktopBridge: true,
+      isLocalExecution: false,
+      remoteSshHost: null,
+    });
+
+    expect(targets).toEqual([]);
+  });
+
   it("plans file-manager targets with active-file absolute path and reveal mode", () => {
     const targets = planWorkspaceOpenTargets({
       workspaceDirectory: "/repo",
